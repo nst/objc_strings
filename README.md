@@ -24,7 +24,5 @@ Path of an Objective-C project.
 3. shell: `/bin/sh`
 4. script: `${SOURCE_ROOT}/objc_strings.py`
 
-https://github.com/nst/objc_strings/raw/master/images/settings.png
-
 ![settings](https://github.com/nst/objc_strings/raw/master/images/settings.png "settings")
 ![warnings](https://github.com/nst/objc_strings/raw/master/images/warnings.png "warnings")

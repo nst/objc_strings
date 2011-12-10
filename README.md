@@ -14,6 +14,8 @@ Path of an Objective-C project.
 #### Typical usage
 
     $ python objc_strings.py /path/to/obj_c/project
+    ./MyProject/en.lproj/Localizable.strings:13: warning: unused key in en.lproj: "Misc"
+    ./MyProject/ViewController.m:16: warning: missing key in fr.lproj: "World"
 
 #### Xcode integration
 
@@ -22,5 +24,7 @@ Path of an Objective-C project.
 3. shell: `/bin/sh`
 4. script: `${SOURCE_ROOT}/objc_strings.py`
 
-![](images/settings.png)
-![](images/warnings.png)
+https://github.com/nst/objc_strings/raw/master/images/settings.png
+
+![settings](https://github.com/nst/objc_strings/raw/master/images/settings.png "settings")
+![warnings](https://github.com/nst/objc_strings/raw/master/images/warnings.png "warnings")

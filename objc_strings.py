@@ -1,17 +1,25 @@
-#! /usr/bin/python
-# https://github.com/nst/objc_strings
+#!/usr/bin/env python
 
-__author__ = "Nicolas Seriot"
-__date__ = "2011-05-09"
+# Nicolas Seriot
+# 2011-05-09 - 2011-12-10
+# https://github.com/nst/objc_strings/
 
 """
 Goal: helps Cocoa applications localization by detecting unused and missing keys in '.strings' files
 
 Input: path of an Objective-C project
 
-Output: for each .strings file, missing keys and unused keys
+Output:
+    1) warnings for untranslated strings in *.m
+    2) warnings for unused keys in Localization.strings
 
-Typical usage: $ python objc_strings.py /path/to/cocoa/project
+Typical usage: $ python objc_strings.py /path/to/obj_c/project
+
+Xcode integration:
+    - copy objc_strings.py at the root of your project
+    - add a 'Run Script' build phase to your target
+        - shell: /bin/sh
+        - script: ${SOURCE_ROOT}/objc_strings.py
 """
 
 import sys
@@ -19,28 +27,57 @@ import os
 import re
 import codecs
 
-def keys_in_file_at_path(p):
+def warning(file_path, line_number, message):
+    print "%s:%d: warning: %s" % (file_path, line_number, message)
 
-    for encoding in ('utf-8', 'utf-16'):
+def error(file_path, line_number, message):
+    print "%s:%d: error: %s" % (file_path, line_number, message)
 
+m_paths_and_line_numbers_for_key = {} # [{'k1':(('f1, n1'), ('f1, n2'), ...), ...}]
+s_paths_and_line_numbers_for_key = {} # [{'k1':(('f1, n1'), ('f1, n2'), ...), ...}]
+
+def language_code_in_strings_path(p):
+    m = re.search(".*/(.*?.lproj)/", p)
+    if m:
+        return m.group(1)
+    return None   
+
+def key_in_string(s):
+    m = re.search("\"(.*?)\"", s)
+    if not m:
+        return None
+    
+    key = m.group(1)
+    
+    if key.startswith("//") or key.startswith("/*"):
+        return None
+    
+    return key
+
+def keys_set_in_strings_file_at_path(p):
+    
+    for encoding in ('utf-8', 'utf-16'):        
         try:
             keys = set()
             f = codecs.open(p, encoding=encoding)
             
-            for s in f.readlines():
-                m = re.search("\"(.*?)\"", s)
-                if not m:
-                    continue
+            line = 0
+            for s in f.xreadlines():
+                line += 1
                 
-                key = m.group(1)
-        
-                if key.startswith("//") or key.startswith("/*"):
+                key = key_in_string(s)
+                
+                if not key:
                     continue
                 
                 keys.add(key)
                 
+                if key not in s_paths_and_line_numbers_for_key:
+                    s_paths_and_line_numbers_for_key[key] = set()
+                s_paths_and_line_numbers_for_key[key].add((p, line))
+            
             return keys
-
+        
         except:
             pass
     
@@ -51,44 +88,30 @@ def localized_strings_at_path(p):
     
     keys = set()
     
+    line = 0
     for s in f.xreadlines():
-        # we don't use genstrings because it won't redirect output to stdout
+        line += 1
         m = re.search("NSLocalizedString\(@\"(.*?)\"", s)
         if not m:
             continue
         
         key = m.group(1)
-        
+    
         keys.add(key)
-        
+
+        if key not in m_paths_and_line_numbers_for_key:
+            m_paths_and_line_numbers_for_key[key] = set()
+        m_paths_and_line_numbers_for_key[key].add((p, line))
+    
     return keys
 
-def add_objc_m_files(set, dir, files):
-    for f in files:
-        path = os.path.join(dir, f)
-        if not os.path.isdir(path) and f.endswith('.m'):
-            set.add(path)
-    return set
+def paths_with_files_passing_test_at_path(test, path):
+    for root, dirs, files in os.walk(path):
+        for p in (os.path.join(root, f) for f in files if test(f)):
+            yield p
 
-def add_localizable_files(set, dir, files):
-    for f in files:
-        path = os.path.join(dir, f)
-        if not os.path.isdir(path) and f == "Localizable.strings":
-            set.add(path)
-    return set
-    
-def objc_m_paths_in_directory(path):
-    paths = set()
-    os.path.walk(path, add_objc_m_files, paths)
-    return paths
-    
-def strings_paths_in_dir(path):
-    paths = set()
-    os.path.walk(path, add_localizable_files, paths)
-    return paths
-
-def keys_in_code_at_path(path):
-    m_paths = objc_m_paths_in_directory(path)
+def keys_set_in_code_at_path(path):
+    m_paths = paths_with_files_passing_test_at_path(lambda f:f.endswith('.m'), path)
     
     localized_strings = set()
     
@@ -96,40 +119,49 @@ def keys_in_code_at_path(path):
         keys = localized_strings_at_path(p)
         
         localized_strings.update(keys)
-
+    
     return localized_strings
+
+def show_untranslated_keys_in_project(project_path):
     
-def main():
-    if len(sys.argv) != 2 or not os.path.exists(sys.argv[1]):
-        print "-- prints missing and unused keys in cocoa .strings files"
-        print "USAGE: $ python %s PROJECT_PATH" % sys.argv[0]
-        exit(0)
+    if not project_path or not os.path.exists(project_path):
+        error("", 0, "bad project path:%s" % project_path)
+        return
     
-    project_path = sys.argv[1]
-    
-    keys_in_code = keys_in_code_at_path(project_path)
-    
-    strings_paths = strings_paths_in_dir(project_path)
+    keys_set_in_code = keys_set_in_code_at_path(project_path)
+
+    strings_paths = paths_with_files_passing_test_at_path(lambda f:f == "Localizable.strings", project_path)
     
     for p in strings_paths:
-        print ""
-        print "-" * 80
-        print "file:", p
-        print "-" * 80
-
-        keys_in_strings = keys_in_file_at_path(p)
-
-        missing_keys = keys_in_code - keys_in_strings
-        unused_keys = keys_in_strings - keys_in_code
+        keys_set_in_strings = keys_set_in_strings_file_at_path(p)
         
-        print "\n--------------------------- missing keys in .strings ---------------------------\n"
+        missing_keys = keys_set_in_code - keys_set_in_strings
+        unused_keys = keys_set_in_strings - keys_set_in_code
+
+        language_code = language_code_in_strings_path(p)
+        
         for k in missing_keys:
-            print k
+            message = "missing key in %s: \"%s\"" % (language_code, k)
+            
+            for (p_, n) in m_paths_and_line_numbers_for_key[k]:
+                warning(p_, n, message)
 
-        print "\n--------------------------- unused keys in .strings ----------------------------\n"
         for k in unused_keys:
-            print k
-    print ""
-        
-if __name__=='__main__':
+            message = "unused key in %s: \"%s\"" % (language_code, k)
+            
+            for (p, n) in s_paths_and_line_numbers_for_key[k]:
+                warning(p, n, message)
+
+def main():
+    
+    project_path = None
+    
+    if 'PROJECT_DIR' in os.environ:
+        project_path = os.environ['PROJECT_DIR']
+    elif len(sys.argv) > 1:
+        project_path = sys.argv[1]
+    
+    show_untranslated_keys_in_project(project_path)
+
+if __name__ == "__main__":
     main()

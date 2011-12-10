@@ -54,6 +54,15 @@ def key_in_string(s):
     
     return key
 
+def key_in_code_line(s):
+    m = re.search("NSLocalizedString\(@\"(.*?)\"", s)
+    if not m:
+        return None
+    
+    key = m.group(1)
+    
+    return key
+
 def keys_set_in_strings_file_at_path(p):
     
     for encoding in ('utf-8', 'utf-16'):        
@@ -91,12 +100,12 @@ def localized_strings_at_path(p):
     line = 0
     for s in f.xreadlines():
         line += 1
-        m = re.search("NSLocalizedString\(@\"(.*?)\"", s)
-        if not m:
+        
+        key = key_in_code_line(s)
+        
+        if not key:
             continue
         
-        key = m.group(1)
-    
         keys.add(key)
 
         if key not in m_paths_and_line_numbers_for_key:

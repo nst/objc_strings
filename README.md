@@ -19,6 +19,10 @@ Path of an Objective-C project.
 
 #### Xcode integration
 
+1. make `objc_strings.py` executable
+
+    $ chmod +x objc_strings.py
+
 1. copy `objc_strings.py` to the root of your project
 2. add a "Run Script" build phase to your target
 3. shell: `/bin/sh`

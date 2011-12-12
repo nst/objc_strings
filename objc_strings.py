@@ -12,6 +12,7 @@ Input: path of an Objective-C project
 Output:
     1) warnings for untranslated strings in *.m
     2) warnings for unused keys in Localization.strings
+    3) errors for keys defined twice or more in the same .strings file
 
 Typical usage: $ python objc_strings.py /path/to/obj_c/project
 
@@ -20,6 +21,8 @@ Xcode integration:
     - add a 'Run Script' build phase to your target
         - shell: /bin/sh
         - script: ${SOURCE_ROOT}/objc_strings.py
+    - but this build phase in second position
+    - ensure your .strings file are encoded in utf-8
 """
 
 import sys
@@ -40,10 +43,10 @@ def language_code_in_strings_path(p):
     m = re.search(".*/(.*?.lproj)/", p)
     if m:
         return m.group(1)
-    return None   
+    return None
 
 def key_in_string(s):
-    m = re.search("\"(.*?)\"", s)
+    m = re.search("(?u)^\"(.*?)\"", s)
     if not m:
         return None
     
@@ -65,35 +68,38 @@ def key_in_code_line(s):
 
 def keys_set_in_strings_file_at_path(p):
     
-    for encoding in ('utf-8', 'utf-16'):        
-        try:
-            keys = set()
-            f = codecs.open(p, encoding=encoding)
-            
-            line = 0
-            for s in f.xreadlines():
-                line += 1
-                
-                key = key_in_string(s)
-                
-                if not key:
-                    continue
-                
-                keys.add(key)
-                
-                if key not in s_paths_and_line_numbers_for_key:
-                    s_paths_and_line_numbers_for_key[key] = set()
-                s_paths_and_line_numbers_for_key[key].add((p, line))
-            
-            return keys
-        
-        except:
-            pass
+    keys = set()
+    f = codecs.open(p, encoding='utf-8')
     
-    return None
-
+    line = 0
+    for s in f.xreadlines():
+        line += 1
+        
+        if s.strip().startswith('//'):
+            continue
+        
+        s = s.decode("utf-8", "ignore")
+        
+        key = key_in_string(s)
+        
+        if not key:
+            continue
+                
+        if key in keys:
+            error(p, line, "key already defined: \"%s\"" % key)
+            continue
+        
+        keys.add(key)
+        
+        if key not in s_paths_and_line_numbers_for_key:
+            s_paths_and_line_numbers_for_key[key] = set()
+        s_paths_and_line_numbers_for_key[key].add((p, line))
+    
+    return keys
+    
 def localized_strings_at_path(p):
-    f = open(p)
+            
+    f = open(p)#codecs.open(p, encoding='utf-8')
     
     keys = set()
     
@@ -101,8 +107,13 @@ def localized_strings_at_path(p):
     for s in f.xreadlines():
         line += 1
         
-        key = key_in_code_line(s)
+        if s.strip().startswith('//'):
+            continue
         
+        s = unicode(s)#s.decode('utf-8', 'ignore')
+        
+        key = key_in_code_line(s)
+
         if not key:
             continue
         
@@ -126,7 +137,7 @@ def keys_set_in_code_at_path(path):
     
     for p in m_paths:
         keys = localized_strings_at_path(p)
-        
+
         localized_strings.update(keys)
     
     return localized_strings
@@ -138,15 +149,16 @@ def show_untranslated_keys_in_project(project_path):
         return
     
     keys_set_in_code = keys_set_in_code_at_path(project_path)
-
+    
     strings_paths = paths_with_files_passing_test_at_path(lambda f:f == "Localizable.strings", project_path)
     
     for p in strings_paths:
         keys_set_in_strings = keys_set_in_strings_file_at_path(p)
-        
+                
         missing_keys = keys_set_in_code - keys_set_in_strings
+        
         unused_keys = keys_set_in_strings - keys_set_in_code
-
+        
         language_code = language_code_in_strings_path(p)
         
         for k in missing_keys:
@@ -154,7 +166,7 @@ def show_untranslated_keys_in_project(project_path):
             
             for (p_, n) in m_paths_and_line_numbers_for_key[k]:
                 warning(p_, n, message)
-
+        
         for k in unused_keys:
             message = "unused key in %s: \"%s\"" % (language_code, k)
             

@@ -10,6 +10,7 @@ Path of an Objective-C project.
 
 1. warnings for untranslated strings in *.m
 2. warnings for unused keys in Localization.strings
+3. errors for keys defined twice or more in the same .strings file
 
 #### Typical usage
 
@@ -23,10 +24,11 @@ Path of an Objective-C project.
 
     $ chmod +x objc_strings.py
 
-1. copy `objc_strings.py` to the root of your project
-2. add a "Run Script" build phase to your target
-3. shell: `/bin/sh`
-4. script: `${SOURCE_ROOT}/objc_strings.py`
+2. copy `objc_strings.py` to the root of your project
+3. add a "Run Script" build phase to your target
+4. move this build phase in second position
+5. set the script path to `${SOURCE_ROOT}/objc_strings.py`
+6. ensure your .strings file are encoded in utf-8
 
 ![settings](https://github.com/nst/objc_strings/raw/master/images/settings.png "settings")
 ![warnings](https://github.com/nst/objc_strings/raw/master/images/warnings.png "warnings")

@@ -17,12 +17,13 @@ Output:
 Typical usage: $ python objc_strings.py /path/to/obj_c/project
 
 Xcode integration:
-    - copy objc_strings.py at the root of your project
-    - add a 'Run Script' build phase to your target
-        - shell: /bin/sh
-        - script: ${SOURCE_ROOT}/objc_strings.py
-    - but this build phase in second position
-    - ensure your .strings file are encoded in utf-8
+    1. make `objc_strings.py` executable
+        $ chmod +x objc_strings.py
+    2. copy `objc_strings.py` to the root of your project
+    3. add a "Run Script" build phase to your target
+    4. move this build phase in second position
+    5. set the script path to `${SOURCE_ROOT}/objc_strings.py`
+    6. ensure your .strings file are encoded in utf-8
 """
 
 import sys

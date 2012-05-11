@@ -111,7 +111,7 @@ def localized_strings_at_path(p):
         if s.strip().startswith('//'):
             continue
         
-        s = unicode(s)#s.decode('utf-8', 'ignore')
+        s = unicode(s, 'utf-8') #s.decode('utf-8', 'ignore')
         
         key = key_in_code_line(s)
 

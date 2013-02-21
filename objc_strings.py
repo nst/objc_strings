@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Nicolas Seriot
-# 2011-05-09 - 2011-12-10
+# 2011-05-09 - 2013-02-21
 # https://github.com/nst/objc_strings/
 
 """
@@ -23,7 +23,6 @@ Xcode integration:
     3. add a "Run Script" build phase to your target
     4. move this build phase in second position
     5. set the script path to `${SOURCE_ROOT}/objc_strings.py`
-    6. ensure your .strings file are encoded in utf-8
 """
 
 import sys
@@ -67,18 +66,25 @@ def key_in_code_line(s):
     
     return key
 
-def guess_encoding(p):
+def guess_encoding(path):
     enc = 'utf-8'
-    f = open(p, 'rb')
-    b0 = ord(f.read(1))
-    b1 = ord(f.read(1))
+    
+    size = os.path.getsize(path)
+    if size < 2:
+        return enc
+    
+    f = open(path, 'rb')
+    first_two_bytes = f.read(2)
     f.close()
-    if b0 == 255 and b1 == 254:
+    
+    if first_two_bytes == codecs.BOM_UTF16:
         enc = 'utf-16'
-    elif b0 == 254 and b1 == 255:
+    elif first_two_bytes == codecs.BOM_UTF16_LE:
+        enc = 'utf-16-le'
+    elif first_two_bytes == codecs.BOM_UTF16_BE:
         enc = 'utf-16-be'
+    
     return enc
-
 
 def keys_set_in_strings_file_at_path(p):
     
@@ -118,7 +124,7 @@ def localized_strings_at_path(p):
     keys = set()
     
     line = 0
-    for s in f:
+    for s in f.xreadlines():
         line += 1
         
         if s.strip().startswith('//'):

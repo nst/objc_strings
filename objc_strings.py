@@ -67,25 +67,37 @@ def key_in_code_line(s):
     
     return key
 
+def guess_encoding(p):
+    enc = 'utf-8'
+    f = open(p, 'rb')
+    b0 = ord(f.read(1))
+    b1 = ord(f.read(1))
+    f.close()
+    if b0 == 255 and b1 == 254:
+        enc = 'utf-16'
+    elif b0 == 254 and b1 == 255:
+        enc = 'utf-16-be'
+    return enc
+
+
 def keys_set_in_strings_file_at_path(p):
     
+    enc = guess_encoding(p)
+    f = codecs.open(p, encoding=enc)
     keys = set()
-    f = codecs.open(p, encoding='utf-8')
-    
+
     line = 0
-    for s in f.xreadlines():
+    for s in f:
         line += 1
-        
+		
         if s.strip().startswith('//'):
             continue
         
-        s = s.decode("utf-8", "ignore")
-        
         key = key_in_string(s)
-        
+    
         if not key:
             continue
-                
+
         if key in keys:
             error(p, line, "key already defined: \"%s\"" % key)
             continue
@@ -99,22 +111,21 @@ def keys_set_in_strings_file_at_path(p):
     return keys
     
 def localized_strings_at_path(p):
-            
-    f = open(p)#codecs.open(p, encoding='utf-8')
+
+    enc = guess_encoding(p)
+    f = codecs.open(p, encoding=enc)
     
     keys = set()
     
     line = 0
-    for s in f.xreadlines():
+    for s in f:
         line += 1
         
         if s.strip().startswith('//'):
             continue
         
-        s = unicode(s, 'utf-8') #s.decode('utf-8', 'ignore')
-        
         key = key_in_code_line(s)
-
+	            
         if not key:
             continue
         

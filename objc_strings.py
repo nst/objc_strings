@@ -46,7 +46,7 @@ def language_code_in_strings_path(p):
     return None
 
 def key_in_string(s):
-    m = re.search("(?u)^\"(.*?)\"", s)
+    m = re.search("(?u)^\"(.*?)\"\s*=", s)
     if not m:
         return None
     
@@ -57,13 +57,14 @@ def key_in_string(s):
     
     return key
 
-def key_in_code_line(s):
-    m = re.search("NSLocalizedString\(@\"(.*?)\"", s)
+def key_in_code_line(s):    
+    m = re.search("NSLocalizedString\(@\"(.*?)\",", s)        
+
     if not m:
-        return None
+        return None    
     
     key = m.group(1)
-    
+
     return key
 
 def guess_encoding(path):
@@ -126,12 +127,12 @@ def localized_strings_at_path(p):
     line = 0
     for s in f.xreadlines():
         line += 1
-        
+
         if s.strip().startswith('//'):
             continue
         
         key = key_in_code_line(s)
-	            
+
         if not key:
             continue
         
@@ -139,8 +140,9 @@ def localized_strings_at_path(p):
 
         if key not in m_paths_and_line_numbers_for_key:
             m_paths_and_line_numbers_for_key[key] = set()
+
         m_paths_and_line_numbers_for_key[key].add((p, line))
-    
+
     return keys
 
 def paths_with_files_passing_test_at_path(test, path):
@@ -155,9 +157,8 @@ def keys_set_in_code_at_path(path):
     
     for p in m_paths:
         keys = localized_strings_at_path(p)
-
         localized_strings.update(keys)
-    
+          
     return localized_strings
 
 def show_untranslated_keys_in_project(project_path):
@@ -167,12 +168,12 @@ def show_untranslated_keys_in_project(project_path):
         return
     
     keys_set_in_code = keys_set_in_code_at_path(project_path)
-    
+
     strings_paths = paths_with_files_passing_test_at_path(lambda f:f == "Localizable.strings", project_path)
     
     for p in strings_paths:
         keys_set_in_strings = keys_set_in_strings_file_at_path(p)
-                
+
         missing_keys = keys_set_in_code - keys_set_in_strings
         
         unused_keys = keys_set_in_strings - keys_set_in_code
@@ -183,8 +184,8 @@ def show_untranslated_keys_in_project(project_path):
             message = "missing key in %s: \"%s\"" % (language_code, k)
             
             for (p_, n) in m_paths_and_line_numbers_for_key[k]:
-                warning(p_, n, message)
-        
+                warning(p_, n, message)        
+
         for k in unused_keys:
             message = "unused key in %s: \"%s\"" % (language_code, k)
             
@@ -198,8 +199,8 @@ def main():
     if 'PROJECT_DIR' in os.environ:
         project_path = os.environ['PROJECT_DIR']
     elif len(sys.argv) > 1:
-        project_path = sys.argv[1]
-    
+        project_path = sys.argv[1]  
+
     show_untranslated_keys_in_project(project_path)
 
 if __name__ == "__main__":

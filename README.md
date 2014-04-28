@@ -27,7 +27,7 @@ Path of an Objective-C project.
 2. copy `objc_strings.py` to the root of your project
 3. add a "Run Script" build phase to your target
 4. move this build phase in second position
-5. set the script path to `${SOURCE_ROOT}/objc_strings.py`
+5. set the script path to `"${SOURCE_ROOT}/objc_strings.py"`
 
 ![settings](https://github.com/nst/objc_strings/raw/master/images/settings.png "settings")
 ![warnings](https://github.com/nst/objc_strings/raw/master/images/warnings.png "warnings")

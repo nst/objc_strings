@@ -58,14 +58,11 @@ def key_in_string(s):
     return key
 
 def key_in_code_line(s):    
-    m = re.search("NSLocalizedString\(@\"(.*?)\",", s)        
+    matches = re.findall("NSLocalizedString\(@\"(.*?)\",", s);
+    if len(matches) == 0:
+        return None;
 
-    if not m:
-        return None    
-    
-    key = m.group(1)
-
-    return key
+    return matches
 
 def guess_encoding(path):
     enc = 'utf-8'
@@ -130,18 +127,18 @@ def localized_strings_at_path(p):
 
         if s.strip().startswith('//'):
             continue
-        
-        key = key_in_code_line(s)
 
-        if not key:
+        keylist = key_in_code_line(s)
+        if not keylist:
             continue
-        
-        keys.add(key)
 
-        if key not in m_paths_and_line_numbers_for_key:
-            m_paths_and_line_numbers_for_key[key] = set()
+        keys |= set(keylist)
 
-        m_paths_and_line_numbers_for_key[key].add((p, line))
+        for key in keylist:
+            if key not in m_paths_and_line_numbers_for_key:
+                m_paths_and_line_numbers_for_key[key] = set()
+
+            m_paths_and_line_numbers_for_key[key].add((p, line))
 
     return keys
 

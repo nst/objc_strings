@@ -32,7 +32,7 @@ import codecs
 import optparse
 
 def warning(file_path, line_number, message):
-    print "%s:%d: warning: %s" % (file_path, line_number, message)
+    print "%s:%d: warning: %s" % (file_path, line_number, message.encode("utf8"))
 
 def error(file_path, line_number, message):
     print "%s:%d: error: %s" % (file_path, line_number, message)
@@ -181,7 +181,7 @@ def show_untranslated_keys_in_project(project_path, exclude_dirs):
         language_code = language_code_in_strings_path(p)
 
         for k in missing_keys:
-            message = "missing key in %s: \"%s\"" % (language_code, k)
+            message = "missing key in %s: \"%s\"" % (language_code, unicode(k, 'utf-8'))
 
             for (p_, n) in m_paths_and_line_numbers_for_key[k]:
                 warning(p_, n, message)

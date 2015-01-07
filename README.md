@@ -14,7 +14,7 @@ Path of an Objective-C project.
 
 #### Typical usage
 
-    $ python objc_strings.py /path/to/obj_c/project
+    $ python objc_strings.py -p /path/to/obj_c/project
     ./MyProject/en.lproj/Localizable.strings:13: warning: unused key in en.lproj: "Misc"
     ./MyProject/ViewController.m:16: warning: missing key in fr.lproj: "World"
 
@@ -31,3 +31,18 @@ Path of an Objective-C project.
 
 ![settings](https://github.com/nst/objc_strings/raw/master/images/settings.png "settings")
 ![warnings](https://github.com/nst/objc_strings/raw/master/images/warnings.png "warnings")
+
+#### Common Issues
+
+Some may experience *UnicodeDecodeError* when running the script.
+The problem is that the script runs through all directories to look for .strings files, which may include already compile .strings files which can not be parsed. Often you have some in Build/ or if you integrate CocoaPods ( Pods/ )
+
+To prevent this you can add dirs which you want to have excluded like this
+```
+"${SRCROOT}/objc_strings.py" --exclude-dirs=['Build','Pods']
+```
+
+
+#### ToDo
+
+* Scan Interface Builder (.xib) Files for localized Strings

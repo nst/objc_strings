@@ -104,7 +104,7 @@ def keys_set_in_strings_file_at_path(p):
             continue
 
         if key in keys:
-            error(p, line, "key already defined: \"%s\"" % key)
+            error(p, line, "key already defined: \"%s\"" % key.encode(enc))
             continue
 
         keys.add(key)

@@ -29,9 +29,10 @@ import sys
 import os
 import re
 import codecs
+import optparse
 
 def warning(file_path, line_number, message):
-    print "%s:%d: warning: %s" % (file_path, line_number, message)
+    print "%s:%d: warning: %s" % (file_path, line_number, message.encode("utf8"))
 
 def error(file_path, line_number, message):
     print "%s:%d: error: %s" % (file_path, line_number, message)
@@ -49,15 +50,15 @@ def key_in_string(s):
     m = re.search("(?u)^\"(.*?)\"\s*=", s)
     if not m:
         return None
-    
+
     key = m.group(1)
-    
+
     if key.startswith("//") or key.startswith("/*"):
         return None
-    
+
     return key
 
-def key_in_code_line(s):    
+def key_in_code_line(s):
     matches = re.findall("NSLocalizedString\(@\"(.*?)\",", s);
     if len(matches) == 0:
         return None;
@@ -66,26 +67,26 @@ def key_in_code_line(s):
 
 def guess_encoding(path):
     enc = 'utf-8'
-    
+
     size = os.path.getsize(path)
     if size < 2:
         return enc
-    
+
     f = open(path, 'rb')
     first_two_bytes = f.read(2)
     f.close()
-    
+
     if first_two_bytes == codecs.BOM_UTF16:
         enc = 'utf-16'
     elif first_two_bytes == codecs.BOM_UTF16_LE:
         enc = 'utf-16-le'
     elif first_two_bytes == codecs.BOM_UTF16_BE:
         enc = 'utf-16-be'
-    
+
     return enc
 
 def keys_set_in_strings_file_at_path(p):
-    
+
     enc = guess_encoding(p)
     f = codecs.open(p, encoding=enc)
     keys = set()
@@ -93,34 +94,34 @@ def keys_set_in_strings_file_at_path(p):
     line = 0
     for s in f:
         line += 1
-		
+
         if s.strip().startswith('//'):
             continue
-        
+
         key = key_in_string(s)
-    
+
         if not key:
             continue
 
         if key in keys:
-            error(p, line, "key already defined: \"%s\"" % key)
+            error(p, line, "key already defined: \"%s\"" % key.encode(enc))
             continue
-        
+
         keys.add(key)
-        
+
         if key not in s_paths_and_line_numbers_for_key:
             s_paths_and_line_numbers_for_key[key] = set()
         s_paths_and_line_numbers_for_key[key].add((p, line))
-    
+
     return keys
-    
+
 def localized_strings_at_path(p):
 
     enc = guess_encoding(p)
     f = codecs.open(p, encoding=enc)
-    
+
     keys = set()
-    
+
     line = 0
     for s in f.xreadlines():
         line += 1
@@ -142,63 +143,70 @@ def localized_strings_at_path(p):
 
     return keys
 
-def paths_with_files_passing_test_at_path(test, path):
-    for root, dirs, files in os.walk(path):
+def paths_with_files_passing_test_at_path(test, path, exclude_dirs):
+    for root, dirs, files in os.walk(path, topdown=True):
+        dirs[:] = [d for d in dirs if d not in exclude_dirs]
         for p in (os.path.join(root, f) for f in files if test(f)):
             yield p
 
-def keys_set_in_code_at_path(path):
-    m_paths = paths_with_files_passing_test_at_path(lambda f:f.endswith('.m'), path)
-    
+def keys_set_in_code_at_path(path, exclude_dirs):
+    m_paths = paths_with_files_passing_test_at_path(lambda f:f.endswith('.m'), path, exclude_dirs)
+
     localized_strings = set()
-    
+
     for p in m_paths:
         keys = localized_strings_at_path(p)
         localized_strings.update(keys)
-          
+
     return localized_strings
 
-def show_untranslated_keys_in_project(project_path):
-    
+def show_untranslated_keys_in_project(project_path, exclude_dirs):
+
     if not project_path or not os.path.exists(project_path):
         error("", 0, "bad project path:%s" % project_path)
         return
-    
-    keys_set_in_code = keys_set_in_code_at_path(project_path)
 
-    strings_paths = paths_with_files_passing_test_at_path(lambda f:f == "Localizable.strings", project_path)
-    
+    keys_set_in_code = keys_set_in_code_at_path(project_path, exclude_dirs)
+
+    strings_paths = paths_with_files_passing_test_at_path(lambda f:f == "Localizable.strings", project_path, exclude_dirs)
+
     for p in strings_paths:
+
         keys_set_in_strings = keys_set_in_strings_file_at_path(p)
 
         missing_keys = keys_set_in_code - keys_set_in_strings
-        
+
         unused_keys = keys_set_in_strings - keys_set_in_code
-        
+
         language_code = language_code_in_strings_path(p)
-        
+
         for k in missing_keys:
-            message = "missing key in %s: \"%s\"" % (language_code, k)
-            
+            message = "missing key in %s: \"%s\"" % (language_code, unicode(k, 'utf-8'))
+
             for (p_, n) in m_paths_and_line_numbers_for_key[k]:
-                warning(p_, n, message)        
+                warning(p_, n, message)
 
         for k in unused_keys:
             message = "unused key in %s: \"%s\"" % (language_code, k)
-            
+
             for (p, n) in s_paths_and_line_numbers_for_key[k]:
                 warning(p, n, message)
 
 def main():
-    
+
+    p = optparse.OptionParser()
+    p.add_option('--project-path', '-p', dest="project_path")
+    p.add_option('--exclude-dirs', '-e', type="string", default=[], dest="exclude_dirs")
+    options, arguments = p.parse_args()
+
     project_path = None
-    
+
     if 'PROJECT_DIR' in os.environ:
         project_path = os.environ['PROJECT_DIR']
-    elif len(sys.argv) > 1:
-        project_path = sys.argv[1]  
+    elif options.project_path:
+        project_path = options.project_path
 
-    show_untranslated_keys_in_project(project_path)
+    show_untranslated_keys_in_project(project_path, options.exclude_dirs)
 
 if __name__ == "__main__":
     main()

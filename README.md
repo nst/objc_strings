@@ -41,7 +41,10 @@ To prevent this you can add dirs which you want to have excluded like this
 ```
 "${SRCROOT}/objc_strings.py" --exclude-dirs=['Build','Pods']
 ```
-
+or if you are on terminal
+```
+$ objc_strings.py --project-path /path/to/obj_c/project --exclude-dirs=['Build','Pods']
+```
 
 #### ToDo
 

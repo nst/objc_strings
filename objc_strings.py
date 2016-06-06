@@ -59,7 +59,7 @@ def key_in_string(s):
     return key
 
 def key_in_code_line(s):
-    matches = re.findall("NSLocalizedString\(@?\"(.*?)\",", s);
+    matches = re.findall("NSLocalizedString.*\(@?\"(.*?)\",", s);
     if len(matches) == 0:
         return None;
 
